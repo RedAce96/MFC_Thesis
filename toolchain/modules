@@ -102,6 +102,10 @@ san   CSCS Santis
 san-all cmake python
 san-gpu nvhpc cuda cray-mpich
 
+i     Tennessee Isaac
+i-all openmpi/4.0.5-gcc
+i-cpu openmpi/4.0.5-gcc
+
 h     hipergator
 h-all python/3.12
 h-cpu gcc/14.2 openmpi/5.0.7
