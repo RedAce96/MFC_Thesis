@@ -88,3 +88,8 @@ n-gpu CC=nvc CXX=nvc++ FC=nvfortran
 san   CSCS Santis
 san-all cmake python
 san-gpu nvhpc cuda cray-mpich
+
+i     Tennessee Isaac
+i-all openmpi/4.0.5-gcc
+i-cpu openmpi/4.0.5-gcc
+
