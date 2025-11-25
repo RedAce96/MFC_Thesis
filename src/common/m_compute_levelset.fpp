@@ -349,7 +349,7 @@ contains
         x_corner = patch_ib(ib_patch_id)%x_centroid
         y_corner = patch_ib(ib_patch_id)%y_centroid
 
-        !> Bottom point
+        !> Bottom Corner - With symmetry 
         x1 = x_corner
         y1 = y_corner - length_y
         !> Leading point
