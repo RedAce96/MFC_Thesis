@@ -119,6 +119,10 @@ contains
                     ! STL+IBM patch
                 elseif (patch_ib(i)%geometry == 5) then
                     call s_ib_model(i, ib_markers_sf, levelset, levelset_norm)
+                    !> Addition from Seth Brolliar - Triangular IB patch
+                elseif (patch_ib(i)%geometry == 6) then
+                    call s_ib_triangle(i, ib_markers_sf)
+                    call s_triangle_levelset(i, levelset, levelset_norm)
                 end if
             end do
             !> @}
@@ -176,6 +180,85 @@ contains
         $:END_GPU_PARALLEL_LOOP()
 
     end subroutine s_ib_circle
+
+        !> The triangular patch is a 2D geometry primarily meant for
+        !!              the creation of 2D cone cylinder flare or other such
+        !!              shaped geometry.*** NOTE *** The input (x or y)_centroid
+        !!              does not represent the geometry centroid, but instead
+        !!              the bottom right corner of a right triangle. From this point the x
+        !!              distance will move left, and the y distance will move up and down
+        !!              this will create a SYMMETRICAL TRIANGLE
+        !! 
+        !! @param patch_id is the patch identifier
+        !! @param ib_markers_sf Array to track patch ids
+    subroutine s_ib_triangle(patch_id, ib_markers_sf)
+
+        integer, intent(in) :: patch_id
+        integer, dimension(0:m, 0:n, 0:p), intent(inout) :: ib_markers_sf
+
+        integer :: i, j, k !< Generic loop iterators
+        real(wp) :: x_corner, y_corner !< Define the corner of the triangle
+        real(wp) :: f1, f2, f3 !< Defines the check for inside the triangle
+        real(wp) :: x1, x2, x3, y1, y2, y3 !< Points of the triangle
+       ! @:HardcodedDimensionExtrustion()
+       ! @:Hardcoded2DVariables()
+
+        !> Not sure about patch smearing, so I will leave that off for now
+
+        !> Just patch_ib now, no icpp needed
+        x_corner = patch_ib(patch_id)%x_centroid
+        y_corner = patch_ib(patch_id)%y_centroid
+        length_x = patch_ib(patch_id)%length_x
+        length_y = patch_ib(patch_id)%length_y
+      
+        !> Bottom point - with symmetry for triangle
+        x1 = x_corner
+        y1 = y_corner - length_y
+        !> Leading point
+        x2 = x_corner - length_x
+        y2 = y_corner
+        !> Top Point
+        x3 = x_corner
+        y3 = y_corner + length_y
+
+
+        ! Following the rectangular patch logic: since the triangular patch
+        !  does not allow for its boundaries to
+        ! be smoothed out, the pseudo volume fraction is set to 1 to ensure
+        ! that only the current patch contributes to the fluid state in the
+        ! cells that this patch covers.
+        eta = 1._wp
+
+        ! Checking whether the triangle covers a particular cell in the
+        ! domain and verifying whether the current patch has the permission
+        ! to write to that cell. If both queries check out, the primitive
+        ! variables of the current patch are assigned to this cell.
+
+        do j = 0, n
+            do i = 0, m
+
+                ! --- Bounding box pre-check ---
+                if (x_cc(i) < x2 .or. x_cc(i) > x_corner) cycle
+                if (y_cc(j) < y1 .or. y_cc(j) > y3) cycle
+
+                ! --- Half-plane (side) test ---
+                f1 = (x_cc(i) - x1)*(y2 - y1) - (y_cc(j) - y1)*(x2 - x1)
+                f2 = (x_cc(i) - x2)*(y3 - y2) - (y_cc(j) - y2)*(x3 - x2)
+                f3 = (x_cc(i) - x3)*(y1 - y3) - (y_cc(j) - y3)*(x1 - x3)
+
+                if ((f1 >= 0.0 .and. f2 >= 0.0 .and. f3 >= 0.0) .or. &
+            (f1 <= 0.0 .and. f2 <= 0.0 .and. f3 <= 0.0)) then
+
+                        ! Updating the patch identities bookkeeping variable
+                        ib_markers_sf(i, j, 0) = patch_id
+
+                end if
+            end do
+        end do
+
+
+    end subroutine s_ib_triangle
+
 
     !! @param patch_id is the patch identifier
     !! @param ib_markers_sf Array to track patch ids
@@ -544,6 +627,8 @@ contains
         $:END_GPU_PARALLEL_LOOP()
 
     end subroutine s_ib_rectangle
+
+    
 
     !>          The spherical patch is a 3D geometry that may be used,
         !!              for example, in creating a bubble or a droplet. The patch
