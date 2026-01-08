@@ -24,6 +24,7 @@ module m_rhs
     use m_global_parameters    !< Definitions of the global parameters
 
     use m_mpi_proxy            !< Message passing interface (MPI) module proxy
+    use m_mpi_common           !< MPI domain decomposition globals (start_idx)
 
     use m_variables_conversion !< State variables type conversion procedures
 
@@ -167,6 +168,8 @@ module m_rhs
 
     real(wp), allocatable, dimension(:, :, :) :: nbub !< Bubble number density
     $:GPU_DECLARE(create='[nbub]')
+
+
 
 contains
 
@@ -639,6 +642,11 @@ contains
 
         real(wp) :: t_start, t_finish
         integer :: i, j, k, l, id !< Generic loop iterators
+        
+        !> Thermal Source declarations
+        real(wp) :: dist_sq, source_val
+        integer :: ti !< Thermal source counter
+        integer :: th_i0, th_i1, th_j0, th_j1 ! < Loop boundary definitions
 
         call nvtxStartRange("COMPUTE-RHS")
 
@@ -990,6 +998,43 @@ contains
                                              rhs_vf)
             call nvtxEndRange
         end if
+
+
+        ! print *, "DEBUG: Heat source check thermal_source =", thermal_source
+        !> Thermal source addition to energy equation
+        if (thermal_source) then
+
+            ! print *, "DEBUGGING: Inside THERMAL SOURCE Check, num_source_th: ", num_source_th
+            ! 1. Start the profiling timer
+            call nvtxStartRange("RHS-THERMAL-SRC")
+        
+            ! 2. Create a parallel loop specifically for the source term
+            do ti = 1, num_source_th
+                th_i0 = max(idwint(1)%beg, 0)
+                th_i1 = min(idwint(1)%end, m)
+                th_j0 = max(idwint(2)%beg, 0)
+                th_j1 = min(idwint(2)%end, n)
+
+                if (th_i1 >= th_i0 .and. th_j1 >= th_j0) then
+                    do j = th_j0, th_j1
+                        do i = th_i0, th_i1
+
+                            ! Use local coordinate arrays for distance computations
+                            dist_sq = (x_cc(i) - thermal_s(ti)%loc(1))**2 + &
+                                      (y_cc(j) - thermal_s(ti)%loc(2))**2
+
+                            source_val = thermal_s(ti)%amp * exp( -dist_sq / (2.0_wp * thermal_s(ti)%width**2) )
+
+                            rhs_vf(E_idx)%sf(i, j, 0) = rhs_vf(E_idx)%sf(i, j, 0) + source_val
+                        end do
+                    end do
+                end if
+            end do
+            
+            call nvtxEndRange
+
+        end if
+
 
         ! Add bubbles source term
         if (bubbles_euler .and. (.not. adap_dt) .and. (.not. qbmm)) then

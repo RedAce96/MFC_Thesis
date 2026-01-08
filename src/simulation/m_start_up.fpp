@@ -43,6 +43,8 @@ module m_start_up
 
     use m_acoustic_src      !< Acoustic source calculations
 
+    !use m_thermal_src          !< Thermal source calculations !! NOT READY
+
     use m_rhs                  !< Right-hane-side (RHS) evaluation procedures
 
     use m_chemistry            !< Chemistry module
@@ -174,6 +176,7 @@ contains
             Ca, Web, Re_inv, &
             acoustic_source, acoustic, num_source, &
             polytropic, thermal, &
+            thermal_source, thermal_s, num_source_th, &
             integral, integral_wrt, num_integrals, &
             polydisperse, poly_sigma, qbmm, &
             relax, relax_model, &
@@ -1320,6 +1323,11 @@ contains
         if (acoustic_source) then
             call s_initialize_acoustic_src()
         end if
+
+        !> Addition for Thermal Sources !! Currently not ready
+        !if (thermal_source) then
+        !        call s_initialize_thermal_src()
+        !end if
 
         if (viscous .and. (.not. igr)) then
             call s_initialize_viscous_module()

@@ -406,6 +406,15 @@ module m_derived_types
         real(wp), dimension(:, :), allocatable :: xyz_to_r_ratios !< List of [xyz]/r for mom source term vector
     end type source_spatial_type
 
+
+    !> Thermal source parameters
+    type thermal_parameters
+        real(wp) :: amp                  !< Amplitude of source
+        real(wp) :: width                !< Width of source
+        real(wp), dimension(3) :: loc   !< Location of the thermal source in XYZ space
+    end type thermal_parameters
+
+
     !> Ghost Point for Immersed Boundaries
     type ghost_point
         integer, dimension(3) :: loc !< Physical location of the ghost point

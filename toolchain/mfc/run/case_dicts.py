@@ -284,6 +284,8 @@ SIMULATION.update({
     'bubble_model': ParamType.INT,
     'acoustic_source': ParamType.LOG,
     'num_source': ParamType.INT,
+    'thermal_source': ParamType.LOG,
+    'num_source_th': ParamType.INT,
     'qbmm': ParamType.LOG,
     'integral_wrt': ParamType.LOG,
     'num_integrals': ParamType.INT,
@@ -419,6 +421,17 @@ for f_id in range(1,10+1):
 
         for cmp_id in range(1,3+1):
             SIMULATION[f"acoustic({mono_id})%loc({cmp_id})"] = ParamType.REAL
+
+    # For loop for thermal source
+    for therm_id in range(1,4+1):
+        # Add integer attributes later
+
+        for real_attr in ["amp","width"]:
+            SIMULATION[f"thermal_s({therm_id})%{real_attr}"] = ParamType.REAL
+
+        for XYZ in range(1,3+1):
+            SIMULATION[f"thermal_s({therm_id})%loc({XYZ})"] = ParamType.REAL
+
 
     for int_id in range(1,5+1):
         for cmp in ["x", "y", "z"]:

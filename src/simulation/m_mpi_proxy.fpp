@@ -98,7 +98,7 @@ contains
             & 'wave_speeds', 'avg_state', 'precision', 'bc_x%beg', 'bc_x%end', &
             & 'bc_y%beg', 'bc_y%end', 'bc_z%beg', 'bc_z%end',  'fd_order',     &
             & 'num_probes', 'num_integrals', 'bubble_model', 'thermal',        &
-            & 'num_source', 'relax_model', 'num_ibs', 'n_start',    &
+            & 'num_source', 'num_source_th', 'relax_model', 'num_ibs', 'n_start', &
             & 'num_bc_patches', 'num_igr_iters', 'num_igr_warm_start_iters', &
             & 'adap_dt_max_iters' ]
             call MPI_BCAST(${VAR}$, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
@@ -108,8 +108,8 @@ contains
             &  'mp_weno', 'rdma_mpi', 'powell', 'cont_damage', 'bc_io', &
             & 'weno_Re_flux', 'alt_soundspeed', 'null_weights', 'mixture_err',   &
             & 'parallel_io', 'hypoelasticity', 'bubbles_euler', 'polytropic',    &
-            & 'polydisperse', 'qbmm', 'acoustic_source', 'probe_wrt', 'integral_wrt',   &
-            & 'prim_vars_wrt', 'weno_avg', 'file_per_process', 'relax',          &
+            & 'polydisperse', 'qbmm', 'acoustic_source','thermal_source', 'probe_wrt', &
+            & 'integral_wrt', 'prim_vars_wrt', 'weno_avg', 'file_per_process', 'relax', &
             & 'adv_n', 'adap_dt', 'ib', 'bodyForces', 'bf_x', 'bf_y', 'bf_z',    &
             & 'bc_x%grcbc_in', 'bc_x%grcbc_out', 'bc_x%grcbc_vel_out',          &
             & 'bc_y%grcbc_in', 'bc_y%grcbc_out', 'bc_y%grcbc_vel_out',          &
@@ -238,6 +238,17 @@ contains
 
             #:for VAR in [ 'xmin', 'xmax', 'ymin', 'ymax', 'zmin', 'zmax' ]
                 call MPI_BCAST(integral(j)%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
+            #:endfor
+        end do
+
+        !> Thermal source addition
+        do j = 1, num_source_th
+            do i = 1, 3
+                call MPI_BCAST(thermal_s(j)%loc(i), 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
+            end do
+        
+            #:for VAR in ['amp', 'width']
+                call MPI_BCAST(thermal_s(j)%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             #:endfor
         end do
 

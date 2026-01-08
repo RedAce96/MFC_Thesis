@@ -492,6 +492,15 @@ module m_global_parameters
     integer :: num_source !< Number of acoustic sources
     !> @}
     $:GPU_DECLARE(create='[acoustic_source,acoustic,num_source]')
+    
+
+    !> @name Thermal Source parameters
+    !> @{
+    logical :: thermal_source !< Thermal source switch
+    type(thermal_parameters), dimension(num_probes_max) :: thermal_s !< Thermal source parameters
+    integer :: num_source_th !< Number of thermal sources
+    !> @}
+    !> Next would be GPU Declare
 
     !> @name Surface tension parameters
     !> @{
@@ -771,6 +780,19 @@ contains
             acoustic(j)%bb_lowest_freq = dflt_real
             acoustic(j)%bb_bandwidth = dflt_real
         end do
+
+        ! Thermal Source
+        thermal_source = .true.                ! Thermal Source Logical
+        num_source_th = dflt_int                ! Number of thermal sources
+
+        do j = 1, num_source_th
+            thermal_s(j)%amp = dflt_real        ! Gaussian Amp
+            thermal_s(j)%width = dflt_real      ! width
+            thermal_s(j)%loc(1) = dflt_real     ! X Location center
+            thermal_s(j)%loc(2) = dflt_real     ! Y Location center
+            thermal_s(j)%loc(3) = dflt_real     ! Z Location center
+        end do
+
 
         fd_order = dflt_int
         probe_wrt = .false.
