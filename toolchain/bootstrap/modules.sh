@@ -46,12 +46,8 @@ if [ -v $u_c ]; then
     log   "$BR""Brown$W: Oscar (o)"
     log   "$OR""Tennessee$W: Isaac (i)"
     log   "$B""DoD$W:     Carpenter Cray (cc) | Carpenter GNU (c) |  Nautilus (n)"
-<<<<<<< HEAD
-    log_n "($G""a$W/$G""f$W/$G""s$W/$G""w$W/$C""b$W/$C""e$CR/$C""d/$C""dai$CR/$Y""p$CR/$R""r$CR/$B""cc$CR/$B""c$CR/$B""n$CR/$BR""o$CR/$OR""i"$CR"): "
-=======
     log   "$OR""Florida$W: HiPerGator (h)"
     log_n "($G""a$W/$G""f$W/$G""s$W/$G""w$W/$C""b$W/$C""e$CR/$C""d/$C""dai$CR/$Y""p$CR/$R""r$CR/$B""cc$CR/$B""c$CR/$B""n$CR/$BR""o"$CR"/$OR""h"$CR"): "
->>>>>>> deltaFix
     read u_c
     log
 fi
