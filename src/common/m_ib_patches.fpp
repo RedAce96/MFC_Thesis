@@ -190,7 +190,7 @@ contains
         integer, dimension(0:m, 0:n, 0:p), intent(inout) :: ib_markers_sf
 
         integer :: i, j, k !< Generic loop iterators
-	real(wp) :: a, b
+	real(wp) :: a, b, xv, yv
         real(wp), dimension(1:3) :: xy_local
         real(wp), dimension(1:2) :: length, center
 	real(wp), dimension(1:3, 1:3) :: inverse_rotation
@@ -212,7 +212,7 @@ contains
         ! domain and verifying whether the current patch has the permission
         ! to write to that cell. If both queries check out, the primitive
         ! variables of the current patch are assigned to this cell.
-	$:GPU_PARALLEL_LOOP(private='[i,j,xy_local]', copy='[ib_markers_sf'], &
+	$:GPU_PARALLEL_LOOP(private='[i,j,xy_local]', copy='[ib_markers_sf]', &
 	    & copyin='[patch_id,center,length,inverse_rotation,x_cc,y_cc]', collapse=2)
         do j = 0, n
             do i = 0, m
