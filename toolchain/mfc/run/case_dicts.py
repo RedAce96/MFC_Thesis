@@ -422,13 +422,17 @@ for f_id in range(1,10+1):
         for cmp_id in range(1,3+1):
             SIMULATION[f"acoustic({mono_id})%loc({cmp_id})"] = ParamType.REAL
 
-    # For loop for thermal source
+    # For loop for thermal source parameters
     for therm_id in range(1,4+1):
-        # Add integer attributes later
+        # Integer parameters
+        for int_attr in ["frequency"]:
+            SIMULATION[f"thermal_s({therm_id})%{int_attr}"] = ParamType.INT
 
-        for real_attr in ["amp","width"]:
+        # Real parameters
+        for real_attr in ["E_pulse","radius","pulse_duration","laser_duration"]:
             SIMULATION[f"thermal_s({therm_id})%{real_attr}"] = ParamType.REAL
 
+        # XYZ location parameters
         for XYZ in range(1,3+1):
             SIMULATION[f"thermal_s({therm_id})%loc({XYZ})"] = ParamType.REAL
 

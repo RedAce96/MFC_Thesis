@@ -247,7 +247,7 @@ contains
                 call MPI_BCAST(thermal_s(j)%loc(i), 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             end do
         
-            #:for VAR in ['amp', 'width']
+            #:for VAR in ['E_pulse','radius','frequency','pulse_duration','laser_duration']
                 call MPI_BCAST(thermal_s(j)%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             #:endfor
         end do

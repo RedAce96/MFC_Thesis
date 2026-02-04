@@ -43,7 +43,7 @@ module m_start_up
 
     use m_acoustic_src      !< Acoustic source calculations
 
-    !use m_thermal_src          !< Thermal source calculations !! NOT READY
+    use m_thermal_src          !< Thermal source calculations 
 
     use m_rhs                  !< Right-hane-side (RHS) evaluation procedures
 
@@ -1324,10 +1324,10 @@ contains
             call s_initialize_acoustic_src()
         end if
 
-        !> Addition for Thermal Sources !! Currently not ready
-        !if (thermal_source) then
-        !        call s_initialize_thermal_src()
-        !end if
+        !> Addition for Thermal Sources 
+        if (thermal_source) then
+                call s_initialize_thermal_src()
+        end if
 
         if (viscous .and. (.not. igr)) then
             call s_initialize_viscous_module()
@@ -1503,6 +1503,7 @@ contains
             & gamma_v,mu_v,gamma_m,gamma_n,mu_n,gam]')
 
         $:GPU_UPDATE(device='[acoustic_source, num_source]')
+        $:GPU_UPDATE(device='[thermal_source, num_source_th]')
         $:GPU_UPDATE(device='[sigma, surface_tension]')
 
         $:GPU_UPDATE(device='[dx,dy,dz,x_cb,x_cc,y_cb,y_cc,z_cb,z_cc]')

@@ -500,7 +500,7 @@ module m_global_parameters
     type(thermal_parameters), dimension(num_probes_max) :: thermal_s !< Thermal source parameters
     integer :: num_source_th !< Number of thermal sources
     !> @}
-    !> Next would be GPU Declare
+    $:GPU_DECLARE(create='[thermal_source,thermal_s,num_source_th]')
 
     !> @name Surface tension parameters
     !> @{

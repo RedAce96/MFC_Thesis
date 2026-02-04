@@ -409,9 +409,14 @@ module m_derived_types
 
     !> Thermal source parameters
     type thermal_parameters
-        real(wp) :: amp                  !< Amplitude of source
-        real(wp) :: width                !< Width of source
+        real(wp) :: amp                 !< Amplitude of source
+        real(wp) :: width               !< Radius of source
         real(wp), dimension(3) :: loc   !< Location of the thermal source in XYZ space
+        real(wp) :: E_pulse             !< Laser pulse energy
+        real(wp) :: radius              !< Radius of plasma kernel
+        integer :: frequency            !< Laser pulse frequency
+        real(wp) :: pulse_duration      !< Duration of each laser pulse 
+        real(wp) :: laser_duration      !< Total time the laser to runing
     end type thermal_parameters
 
 
