@@ -140,7 +140,7 @@ contains
                 call MPI_BCAST(lag_params%${VAR}$, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
             #:endfor
 
-            #:for VAR in [ 'c0', 'rho0', 'T0', 'x0', 'diffcoefvap', 'epsilonb','charwidth', &
+            #:for VAR in [ 'c0', 'rho0', 'T0', 'x0', 'epsilonb','charwidth', &
                 & 'valmaxvoid', 'Thost']
                 call MPI_BCAST(lag_params%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             #:endfor
@@ -188,12 +188,19 @@ contains
         #:endif
 
         do i = 1, num_fluids_max
-            #:for VAR in [ 'gamma','pi_inf','mul0','ss','pv','gamma_v','M_v',  &
-                & 'mu_v','k_v', 'cp_v','G', 'cv', 'qv', 'qvp' ]
+            #:for VAR in [ 'gamma','pi_inf','G','cv','qv','qvp' ]
                 call MPI_BCAST(fluid_pp(i)%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             #:endfor
             call MPI_BCAST(fluid_pp(i)%Re(1), 2, mpi_p, 0, MPI_COMM_WORLD, ierr)
         end do
+
+        if (bubbles_euler .or. bubbles_lagrange) then
+            #:for VAR in [ 'R0ref','p0ref','rho0ref','T0ref', &
+                'ss','pv','vd','mu_l','mu_v','mu_g','gam_v','gam_g',&
+                'M_v','M_g','k_v','k_g','cp_v','cp_g','R_v','R_g']
+                call MPI_BCAST(bub_pp%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
+            #:endfor
+        end if
 
         do i = 1, num_fluids_max
             #:for VAR in ['bc_x%alpha_rho_in','bc_x%alpha_in','bc_y%alpha_rho_in','bc_y%alpha_in','bc_z%alpha_rho_in','bc_z%alpha_in']
@@ -202,8 +209,8 @@ contains
         end do
 
         do i = 1, num_ibs
-            #:for VAR in [ 'radius', 'length_x', 'length_y', &
-                & 'x_centroid', 'y_centroid', 'c', 'm', 'p', 't', 'theta', 'slip']
+            #:for VAR in [ 'radius', 'length_x', 'length_y', 'length_z', &
+                & 'x_centroid', 'y_centroid', 'z_centroid', 'c', 'm', 'p', 't', 'theta', 'slip', 'mass']
                 call MPI_BCAST(patch_ib(i)%${VAR}$, 1, mpi_p, 0, MPI_COMM_WORLD, ierr)
             #:endfor
             #:for VAR in ['vel', 'angular_vel', 'angles']
@@ -324,7 +331,7 @@ contains
         #:for mpi_dir in [1, 2, 3]
             if (mpi_dir == ${mpi_dir}$) then
                 #:if mpi_dir == 1
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = 0, p
                         do k = 0, n
                             do j = 0, buff_size - 1
@@ -333,8 +340,9 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:elif mpi_dir == 2
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = 0, p
                         do k = 0, buff_size - 1
                             do j = -buff_size, m + buff_size
@@ -344,8 +352,9 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:else
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = 0, buff_size - 1
                         do k = -buff_size, n + buff_size
                             do j = -buff_size, m + buff_size
@@ -355,6 +364,7 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:endif
             end if
         #:endfor
@@ -363,7 +373,7 @@ contains
         #:for rdma_mpi in [False, True]
             if (rdma_mpi .eqv. ${'.true.' if rdma_mpi else '.false.'}$) then
                 #:if rdma_mpi
-                    #:call GPU_HOST_DATA(use_device='[ib_buff_send, ib_buff_recv]')
+                    #:call GPU_HOST_DATA(use_device_addr='[ib_buff_send, ib_buff_recv]')
 
                         call nvtxStartRange("IB-MARKER-SENDRECV-RDMA")
                         call MPI_SENDRECV( &
@@ -398,7 +408,7 @@ contains
         #:for mpi_dir in [1, 2, 3]
             if (mpi_dir == ${mpi_dir}$) then
                 #:if mpi_dir == 1
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = 0, p
                         do k = 0, n
                             do j = -buff_size, -1
@@ -407,8 +417,9 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:elif mpi_dir == 2
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = 0, p
                         do k = -buff_size, -1
                             do j = -buff_size, m + buff_size
@@ -418,9 +429,10 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:else
                     ! Unpacking buffer from bc_z%beg
-                    $:GPU_PARALLEL_LOOP(collapse=3,private='[r]')
+                    $:GPU_PARALLEL_LOOP(collapse=3,private='[j,k,l,r]')
                     do l = -buff_size, -1
                         do k = -buff_size, n + buff_size
                             do j = -buff_size, m + buff_size
@@ -431,6 +443,7 @@ contains
                             end do
                         end do
                     end do
+                    $:END_GPU_PARALLEL_LOOP()
                 #:endif
             end if
         #:endfor
