@@ -94,6 +94,9 @@ contains
                 elseif (patch_ib(i)%geometry == 11) then
                     call s_ib_3D_airfoil(i, ib_markers_sf)
                     call s_3D_airfoil_levelset(i, levelset, levelset_norm)
+                else if (patch_ib(i)%geometry == 15) then
+                    call s_ib_cone(i,ib_markers_sf)
+                    call s_cone_levelset(i,levelset,levelset_norm)
                     ! STL+IBM patch
                 elseif (patch_ib(i)%geometry == 12) then
                     call s_ib_model(i, ib_markers_sf, levelset, levelset_norm)
@@ -190,17 +193,17 @@ contains
         integer, dimension(0:m, 0:n, 0:p), intent(inout) :: ib_markers_sf
 
         integer :: i, j, k !< Generic loop iterators
-	real(wp) :: a, b, xv, yv
+	    real(wp) :: a, b, xv, yv
         real(wp), dimension(1:3) :: xy_local
         real(wp), dimension(1:2) :: length, center
-	real(wp), dimension(1:3, 1:3) :: inverse_rotation
+	    real(wp), dimension(1:3, 1:3) :: inverse_rotation
 
         !> Transferring the triangle's centroid, length and rotation matrix
         center(1) = patch_ib(patch_id)%x_centroid
         center(2) = patch_ib(patch_id)%y_centroid
         length(1) = patch_ib(patch_id)%length_x
         length(2) = patch_ib(patch_id)%length_y
-	inverse_rotation(:, :) = patch_ib(patch_id)%rotation_matrix_inverse(:, :)
+	    inverse_rotation(:, :) = patch_ib(patch_id)%rotation_matrix_inverse(:, :)
 
         ! Since the triangular patch does not allow for its boundaries to
         ! be smoothed out, the pseudo volume fraction is set to 1 to ensure
@@ -212,24 +215,29 @@ contains
         ! domain and verifying whether the current patch has the permission
         ! to write to that cell. If both queries check out, the primitive
         ! variables of the current patch are assigned to this cell.
-	$:GPU_PARALLEL_LOOP(private='[i,j,xy_local]', copy='[ib_markers_sf]', &
-	    & copyin='[patch_id,center,length,inverse_rotation,x_cc,y_cc]', collapse=2)
-        do j = 0, n
-            do i = 0, m
-                xy_local = [x_cc(i) - center(1), y_cc(j) - center(2), 0._wp]
-		xy_local = matmul(inverse_rotation, xy_local)
-		a = length(1)
-		b = length(2)
-		xv = xy_local(1) + a / 3._wp
-		yv = xy_local(2) + b / 3._wp
-		if (xv >= 0._wp .and. xv <= a .and. &
-		    yv >= 0._wp .and. yv <= b .and. &
-		    yv <= (-b/a)*xv + b) then
-		    ib_markers_sf(i, j, 0) = patch_id
-		end if
+        $:GPU_PARALLEL_LOOP(private='[i,j,xy_local]', copy='[ib_markers_sf]', &
+            & copyin='[patch_id,center,length,inverse_rotation,x_cc,y_cc]', collapse=2)
+            do j = 0, n
+                do i = 0, m
+                    xy_local = [x_cc(i) - center(1), y_cc(j) - center(2), 0._wp]
+                    xy_local = matmul(inverse_rotation, xy_local)
+                    a = length(1)
+                    b = length(2)
+                    xv = xy_local(1) + abs(a) / 3._wp
+                    ! if b is negative, mirror the triangle in y
+                    if (b < 0._wp) then
+                        yv = -xy_local(2) + abs(b) / 3._wp
+                    else
+                        yv = xy_local(2) + b / 3._wp
+                    end if
+                    if (xv >= 0._wp .and. xv <= abs(a) .and. &
+                        yv >= 0._wp .and. yv <= abs(b) .and. &
+                        yv <= (-abs(b)/abs(a))*xv + abs(b)) then
+                        ib_markers_sf(i, j, 0) = patch_id
+                    end if
+                end do
             end do
-        end do
-	$:END_GPU_PARALLEL_LOOP()
+        $:END_GPU_PARALLEL_LOOP()
 
     end subroutine s_ib_triangle
 
@@ -820,6 +828,69 @@ contains
         $:END_GPU_PARALLEL_LOOP()
 
     end subroutine s_ib_cylinder
+
+    !>  The cone patch is a 3D geometry. The cone is defined by its
+    !   base center location (centroid), height along the x-axis, base radius,
+    !   and optional tip radius (radius2) for truncated cones.
+    !   Base is at x_centroid, apex/tip is at x_centroid - length_x.
+    !   @param patch_id is the patch identifier
+    !   @param ib_markers_sf Array to track patch ids
+    subroutine s_ib_cone(patch_id, ib_markers_sf)
+
+        integer, intent(in) :: patch_id
+        integer, dimension(0:m, 0:n, 0:p), intent(inout) :: ib_markers_sf
+
+        integer :: i, j, k
+        real(wp) :: radius_base, radius_tip, height
+        real(wp) :: x_base, y_base, z_base
+        real(wp) :: x_local, radial_dist_sq, local_radius, local_radius_sq
+
+        ! Get cone parameters
+        ! Base center is at the centroid
+        x_base = patch_ib(patch_id)%x_centroid
+        y_base = patch_ib(patch_id)%y_centroid
+        z_base = patch_ib(patch_id)%z_centroid
+        
+        ! Base radius and height
+        radius_base = patch_ib(patch_id)%radius
+        height = patch_ib(patch_id)%length_x
+        
+        ! Tip radius: 0 for pointed cone, > 0 for truncated cone
+        if (f_is_default(patch_ib(patch_id)%radius2)) then
+            radius_tip = 0._wp
+        else
+            radius_tip = patch_ib(patch_id)%radius2
+        end if
+
+        do k = 0, p
+            do j = 0, n
+                do i = 0, m
+
+                    ! x position relative to base (0 at base, height at tip)
+                    x_local = x_base - x_cc(i)
+
+                    ! Skip if outside axial range
+                    if (x_local < 0._wp .or. x_local > height) cycle
+
+                    ! Radial distance squared from cone axis
+                    radial_dist_sq = (y_cc(j) - y_base)**2 + (z_cc(k) - z_base)**2
+
+                    ! Linear interpolation of radius along cone axis
+                    ! At x_local = 0 (base): local_radius = radius_base
+                    ! At x_local = height (tip): local_radius = radius_tip
+                    local_radius = radius_base + (radius_tip - radius_base) * (x_local / height)
+                    local_radius_sq = local_radius**2
+
+                    ! Check if point is inside the cone
+                    if (radial_dist_sq <= local_radius_sq) then
+                        ib_markers_sf(i, j, k) = patch_id
+                    end if
+
+                end do
+            end do
+        end do
+
+    end subroutine s_ib_cone
 
     !> The STL patch is a 2/3D geometry that is imported from an STL file.
     !! @param patch_id is the patch identifier

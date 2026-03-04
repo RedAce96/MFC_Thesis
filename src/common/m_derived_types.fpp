@@ -305,7 +305,7 @@ module m_derived_types
         real(wp) :: c, p, t, m
 
         real(wp) :: length_x, length_y, length_z !< Dimensions of the patch. x,y,z Lengths.
-        real(wp) :: radius !< Dimensions of the patch. radius.
+        real(wp) :: radius, radius2 !< Dimensions of the patch. radius.
         real(wp) :: theta
 
         logical :: slip

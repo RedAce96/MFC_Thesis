@@ -113,7 +113,7 @@ for var in ["R0ref", "p0ref", "rho0ref", "T0ref", "ss", "pv", "vd",
     PRE_PROCESS[f"bub_pp%{var}"] = ParamType.REAL
 
 for ib_id in range(1, 10+1):
-    for real_attr, ty in [("geometry", ParamType.INT), ("radius", ParamType.REAL),
+    for real_attr, ty in [("geometry", ParamType.INT), ("radius", ParamType.REAL), ("radius2", ParamType.REAL),
                           ("theta", ParamType.REAL), ("slip", ParamType.LOG),
                           ("c", ParamType.REAL), ("p", ParamType.REAL),
                           ("t", ParamType.REAL), ("m", ParamType.REAL),

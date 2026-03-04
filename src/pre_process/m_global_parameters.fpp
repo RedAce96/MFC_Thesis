@@ -33,7 +33,7 @@ module m_global_parameters
 
     ! Computational Domain Parameters
 
-    integer :: proc_rank !< Rank of the local processor
+    integer :: proc_rank !< Rank of the local 
 
     !! Number of cells in the x-, y- and z-coordinate directions
     integer :: m
@@ -549,6 +549,7 @@ contains
             patch_ib(i)%length_y = dflt_real
             patch_ib(i)%length_z = dflt_real
             patch_ib(i)%radius = dflt_real
+            patch_ib(i)%radius2 = dflt_real
             patch_ib(i)%theta = dflt_real
             patch_ib(i)%c = dflt_real
             patch_ib(i)%t = dflt_real

@@ -24,7 +24,8 @@ module m_compute_levelset
  s_rectangle_levelset, &
  s_cuboid_levelset, &
  s_sphere_levelset, &
- s_triangle_levelset
+ s_triangle_levelset, &
+ s_cone_levelset
 
 contains
 
@@ -643,5 +644,189 @@ contains
         $:END_GPU_PARALLEL_LOOP()
 
     end subroutine s_cylinder_levelset
+
+    pure subroutine s_cone_levelset(ib_patch_id, levelset, levelset_norm)
+
+        type(levelset_field), intent(inout) :: levelset
+        type(levelset_norm_field), intent(inout) :: levelset_norm
+        integer, intent(in) :: ib_patch_id
+
+        real(wp) :: radius_base, radius_tip, height
+        real(wp) :: x_base, y_base, z_base
+        real(wp) :: x_local, radial_dist, local_radius
+        real(wp) :: half_angle, sin_a, cos_a
+        real(wp) :: dist_surface, dist_base, dist_tip
+        real(wp) :: signed_dist, best_dist
+        real(wp) :: nx, ny, nz, norm_mag, nr
+        real(wp) :: edge_dist
+        logical :: inside
+        integer :: i, j, k
+
+        ! Get cone parameters
+        x_base = patch_ib(ib_patch_id)%x_centroid
+        y_base = patch_ib(ib_patch_id)%y_centroid
+        z_base = patch_ib(ib_patch_id)%z_centroid
+        radius_base = patch_ib(ib_patch_id)%radius
+        height = patch_ib(ib_patch_id)%length_x
+
+        if (f_is_default(patch_ib(ib_patch_id)%radius2)) then
+            radius_tip = 0._wp
+        else
+            radius_tip = patch_ib(ib_patch_id)%radius2
+        end if
+
+        ! Cone half-angle
+        half_angle = atan2(radius_base - radius_tip, height)
+        sin_a = sin(half_angle)
+        cos_a = cos(half_angle)
+
+        do k = 0, p
+            do j = 0, n
+                do i = 0, m
+
+                    ! Local coordinates: x_local = 0 at base, positive toward tip
+                    ! Note: cone extends in NEGATIVE x from x_base
+                    x_local = x_base - x_cc(i)
+                    radial_dist = sqrt((y_cc(j) - y_base)**2 + (z_cc(k) - z_base)**2)
+
+                    ! Determine if point is inside the cone
+                    inside = .false.
+                    if (x_local >= 0._wp .and. x_local <= height) then
+                        local_radius = radius_base + (radius_tip - radius_base) * (x_local / height)
+                        if (radial_dist <= local_radius) then
+                            inside = .true.
+                        end if
+                    end if
+
+                    ! Compute distance to conical surface (in 2D r-x space)
+                    ! Project point onto the slant line of the cone
+                    ! The slant line goes from (0, radius_base) to (height, radius_tip) in (x_local, r) space
+                    ! Perpendicular distance to this line:
+                    dist_surface = (radial_dist - radius_base) * cos_a + x_local * sin_a
+
+                    ! Distance to base cap (at x_local = 0)
+                    dist_base = -x_local
+
+                    ! Distance to tip cap (at x_local = height)
+                    dist_tip = x_local - height
+
+                    ! Clamp x_local for radius computation
+                    local_radius = radius_base + (radius_tip - radius_base) * &
+                                   (min(max(x_local, 0._wp), height) / max(height, 1.e-12_wp))
+
+                    ! Compute the signed distance
+                    if (x_local < 0._wp) then
+                        ! Beyond the base
+                        if (radial_dist <= radius_base) then
+                            ! Closest to base cap
+                            signed_dist = -x_local
+                            nx = 1._wp; ny = 0._wp; nz = 0._wp
+                        else
+                            ! Closest to base edge
+                            signed_dist = sqrt(x_local**2 + (radial_dist - radius_base)**2)
+                            nx = -x_local
+                            nr = radial_dist - radius_base
+                            norm_mag = sqrt(nx**2 + nr**2)
+                            nx = nx / max(norm_mag, 1.e-12_wp)
+                            nr = nr / max(norm_mag, 1.e-12_wp)
+                            if (radial_dist > 1.e-12_wp) then
+                                ny = nr * (y_cc(j) - y_base) / radial_dist
+                                nz = nr * (z_cc(k) - z_base) / radial_dist
+                            else
+                                ny = 0._wp; nz = 0._wp
+                            end if
+                        end if
+
+                    else if (x_local > height) then
+                        ! Beyond the tip
+                        if (radius_tip > 0._wp .and. radial_dist <= radius_tip) then
+                            signed_dist = x_local - height
+                            nx = -1._wp; ny = 0._wp; nz = 0._wp
+                        else if (radius_tip > 0._wp) then
+                            signed_dist = sqrt((x_local - height)**2 + (radial_dist - radius_tip)**2)
+                            nx = -(x_local - height)
+                            nr = radial_dist - radius_tip
+                            norm_mag = sqrt(nx**2 + nr**2)
+                            nx = nx / max(norm_mag, 1.e-12_wp)
+                            nr = nr / max(norm_mag, 1.e-12_wp)
+                            if (radial_dist > 1.e-12_wp) then
+                                ny = nr * (y_cc(j) - y_base) / radial_dist
+                                nz = nr * (z_cc(k) - z_base) / radial_dist
+                            else
+                                ny = 0._wp; nz = 0._wp
+                            end if
+                        else
+                            ! Pointed apex
+                            signed_dist = sqrt((x_local - height)**2 + radial_dist**2)
+                            nx = -(x_local - height)
+                            if (radial_dist > 1.e-12_wp) then
+                                ny = (y_cc(j) - y_base)
+                                nz = (z_cc(k) - z_base)
+                            else
+                                ny = 0._wp; nz = 0._wp
+                            end if
+                            norm_mag = sqrt(nx**2 + ny**2 + nz**2)
+                            nx = nx / max(norm_mag, 1.e-12_wp)
+                            ny = ny / max(norm_mag, 1.e-12_wp)
+                            nz = nz / max(norm_mag, 1.e-12_wp)
+                        end if
+
+                    else
+                        ! Within axial range: use signed distances
+                        if (inside) then
+                            ! Inside: all distances are negative, pick the one closest to zero
+                            ! (least negative = closest surface)
+                            best_dist = dist_surface  ! negative when inside
+                            nx = cos_a; ny = 0._wp; nz = 0._wp
+
+                            if (dist_base > best_dist) then
+                                best_dist = dist_base  ! = -x_local, negative inside
+                                nx = 1._wp; ny = 0._wp; nz = 0._wp
+                            end if
+                            if (dist_tip > best_dist) then
+                                best_dist = dist_tip  ! = x_local - height, negative inside
+                                nx = -1._wp; ny = 0._wp; nz = 0._wp
+                            end if
+
+                            signed_dist = best_dist
+
+                            ! Set normal for conical surface case
+                            if (f_approx_equal(best_dist, dist_surface)) then
+                                if (radial_dist > 1.e-12_wp) then
+                                    ! Normal perpendicular to slant: (sin_a axially, cos_a radially)
+                                    ! In physical coords: axial = +x direction (toward base from tip)
+                                    nx = sin_a
+                                    ny = cos_a * (y_cc(j) - y_base) / radial_dist
+                                    nz = cos_a * (z_cc(k) - z_base) / radial_dist
+                                else
+                                    nx = sin_a; ny = cos_a; nz = 0._wp
+                                end if
+                            end if
+                        else
+                            ! Outside but within axial range: distance to conical surface
+                            signed_dist = dist_surface
+                            if (radial_dist > 1.e-12_wp) then
+                                nx = sin_a
+                                ny = cos_a * (y_cc(j) - y_base) / radial_dist
+                                nz = cos_a * (z_cc(k) - z_base) / radial_dist
+                            else
+                                nx = sin_a; ny = cos_a; nz = 0._wp
+                            end if
+                        end if
+                    end if
+
+                    levelset%sf(i, j, k, ib_patch_id) = signed_dist
+
+                    ! Normal should point OUTWARD (in direction of increasing levelset)
+                    ! The x_local convention reverses the x direction, so flip nx
+                    levelset_norm%sf(i, j, k, ib_patch_id, 1) = -nx
+                    levelset_norm%sf(i, j, k, ib_patch_id, 2) = ny
+                    levelset_norm%sf(i, j, k, ib_patch_id, 3) = nz
+
+                end do
+            end do
+        end do
+
+    end subroutine s_cone_levelset
 
 end module m_compute_levelset
