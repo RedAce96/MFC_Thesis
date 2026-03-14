@@ -18,11 +18,8 @@ module m_thermal_src
 
     ! Module-level variables
 
-    integer, allocatable, dimension(:) :: frequency    !< Laser frequency
-    $:GPU_DECLARE(create='[frequency]')
-
-    real(wp), allocatable, dimension(:) :: E_pulse, radius, pulseDur, laserDur, TimeStart
-    $:GPU_DECLARE(create='[E_pulse,radius,pulseDur,laserDur,TimeStart]')
+    real(wp), allocatable, dimension(:) :: E_pulse, radius, frequency, pulseDur, laserDur, TimeStart
+    $:GPU_DECLARE(create='[E_pulse,radius,frequency,pulseDur,laserDur,TimeStart]')
 
     real(wp), allocatable, target, dimension(:,:) :: thermal_loc
     $:GPU_DECLARE(create='[thermal_loc]')
@@ -106,6 +103,7 @@ contains
               laserStart(ti) = .false.
           end if
 
+          
           if (mytime > TimeStart(ti) + laserDur(ti)) cycle
 
           ! -------- TEMPORAL SECTION -------- !
@@ -125,12 +123,10 @@ contains
           ! -------- SPATIAL SECTION -------- !
 
           ! Non-halo cells of the core
-          th_i0 = idwint(1)%beg
-          th_i1 = idwint(1)%end
-          th_j0 = idwint(2)%beg
-          th_j1 = idwint(2)%end
-          th_k0 = idwint(3)%beg
-          th_k1 = idwint(3)%end
+          th_i0 = max(idwint(1)%beg, 0)
+          th_i1 = min(idwint(1)%end, m)
+          th_j0 = max(idwint(2)%beg, 0)
+          th_j1 = min(idwint(2)%end, n)
 
           ! Copy to local scalars for GPU (avoids array indexing inside parallel region)
             loc_x = thermal_loc(ti, 1)
@@ -159,13 +155,6 @@ contains
                       spatial = exp(-dist_sq / (2.0_wp * rad**2) )
 
                       source_val = amp * spatial * temporal
-
-                      ! After computing source_val:
-                      if (.not. (source_val == source_val)) then  ! NaN check
-                          print *, "NaN detected: ti=", ti, "i,j,k=", i,j,k, &
-                                  "dist_sq=", dist_sq, "spatial=", spatial, "temporal=", temporal
-                          call s_mpi_abort("NaN in thermal source")
-                      end if
 
                       rhs_vf(E_idx)%sf(i, j, k) = rhs_vf(E_idx)%sf(i, j, k) + source_val
                   end do
