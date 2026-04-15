@@ -94,8 +94,9 @@ san-all cmake python
 san-gpu nvhpc cuda cray-mpich
 
 i     Tennessee Isaac
-i-all openmpi/4.0.5-gcc
-i-cpu openmpi/4.0.5-gcc
+i-all gcc/13.4.0 openmpi/4.1.8-gcc13 hdf5/1.14.5-gcc13-ompi418 openblas/0.3.12
+i-all CC=mpicc CXX=mpicxx FC=mpifort
+i-cpu 
 
 h     hipergator
 h-all python/3.12
