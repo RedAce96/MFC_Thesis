@@ -1299,6 +1299,8 @@ def _load():
         _r(f"chem_params%{a}", LOG, {"chemistry"})
     for a in ["gamma_method", "transport_model"]:
         _r(f"chem_params%{a}", INT, {"chemistry"})
+    for a in ["const_viscosity", "const_thermal_conductivity"]:
+        _r(f"chem_params%{a}", REAL, {"chemistry"})
 
     # Per-fluid output arrays
     for f in range(1, NF + 1):

@@ -41,6 +41,10 @@ contains
 
         call get_mixture_viscosity_mixavg(T_L, Ys_L, Re_L)
         call get_mixture_viscosity_mixavg(T_R, Ys_R, Re_R)
+        if (chem_params%const_viscosity > 0._wp) then
+            Re_L = chem_params%const_viscosity
+            Re_R = chem_params%const_viscosity
+        end if
         ! Convert dynamic viscosity to inverse (MFC stores 1/mu for Reynolds number convention)
         Re_L = 1.0_wp/Re_L
         Re_R = 1.0_wp/Re_R
@@ -253,6 +257,10 @@ contains
 
                             call get_mixture_thermal_conductivity_mixavg(T_L, Ys_L, lambda_L)
                             call get_mixture_thermal_conductivity_mixavg(T_R, Ys_R, lambda_R)
+                            if (chem_params%const_thermal_conductivity > 0._wp) then
+                                lambda_L = chem_params%const_thermal_conductivity
+                                lambda_R = chem_params%const_thermal_conductivity
+                            end if
 
                             call get_species_enthalpies_rt(T_L, h_l)
                             call get_species_enthalpies_rt(T_R, h_r)
@@ -388,6 +396,10 @@ contains
                             ! Get transport properties
                             call get_mixture_thermal_conductivity_mixavg(T_L, Ys_L, lambda_L)
                             call get_mixture_thermal_conductivity_mixavg(T_R, Ys_R, lambda_R)
+                            if (chem_params%const_thermal_conductivity > 0._wp) then
+                                lambda_L = chem_params%const_thermal_conductivity
+                                lambda_R = chem_params%const_thermal_conductivity
+                            end if
 
                             ! Calculate species properties and gradients
                             $:GPU_LOOP(parallelism='[seq]')

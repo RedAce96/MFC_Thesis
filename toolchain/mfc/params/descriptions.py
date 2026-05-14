@@ -509,6 +509,8 @@ PATTERNS = [
     (r"chem_params%reactions", "Enable chemical reactions"),
     (r"chem_params%gamma_method", "Gamma calculation method (1=formulation, 2=cp/cv ratio)"),
     (r"chem_params%transport_model", "Transport model selection for chemistry"),
+    (r"chem_params%const_viscosity", "Optional constant dynamic viscosity override for chemistry transport"),
+    (r"chem_params%const_thermal_conductivity", "Optional constant thermal conductivity override for chemistry transport"),
     (r"chem_params%(\w+)", "Chemistry parameter: {0}"),
     # fluid_rho patterns
     (r"fluid_rho\((\d+)\)", "Reference density for fluid {0}"),

@@ -1238,12 +1238,6 @@ contains
                     accel = accel_mag(j - 2, k, l)
                 end if
             else if (p == 0) then
-                if (chemistry) then
-                    do d = 1, num_species
-                        rhoYks(d) = q_cons_vf(eqn_idx%species%beg + d - 1)%sf(j - 2, k - 2, l)
-                    end do
-                end if
-
                 if ((probe(i)%x >= x_cb(-1)) .and. (probe(i)%x <= x_cb(m))) then
                     if ((probe(i)%y >= y_cb(-1)) .and. (probe(i)%y <= y_cb(n))) then
                         do s = -1, m
@@ -1259,6 +1253,12 @@ contains
                         if (j == 1) j = 2  ! Pick first point if probe is at edge
                         if (k == 1) k = 2  ! Pick first point if probe is at edge
                         l = 0
+
+                        if (chemistry) then
+                            do d = 1, num_species
+                                rhoYks(d) = q_cons_vf(eqn_idx%species%beg + d - 1)%sf(j - 2, k - 2, l)
+                            end do
+                        end if
 
                         ! Computing/Sharing necessary state variables
                         call s_convert_to_mixture_variables(q_cons_vf, j - 2, k - 2, l, rho, gamma, pi_inf, qv, Re, G_local, &
