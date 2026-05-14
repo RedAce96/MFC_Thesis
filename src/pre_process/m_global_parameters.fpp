@@ -505,6 +505,8 @@ contains
 
         chem_params%gamma_method = 1
         chem_params%transport_model = 1
+        chem_params%const_viscosity = dflt_real
+        chem_params%const_thermal_conductivity = dflt_real
 
         ! Fluids physical parameters
         do i = 1, num_fluids_max

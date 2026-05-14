@@ -105,6 +105,10 @@ contains
             #:for VAR in [ 'gamma_method', 'transport_model' ]
                 call MPI_BCAST(chem_params%${VAR}$, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
             #:endfor
+
+            #:for VAR in [ 'const_viscosity', 'const_thermal_conductivity' ]
+                call MPI_BCAST(chem_params%${VAR}$, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+            #:endfor
         end if
 
         if (bubbles_lagrange) then

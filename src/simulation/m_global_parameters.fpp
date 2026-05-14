@@ -593,6 +593,8 @@ contains
         chem_params%reactions = .false.
         chem_params%gamma_method = 1
         chem_params%transport_model = 1
+        chem_params%const_viscosity = dflt_real
+        chem_params%const_thermal_conductivity = dflt_real
 
         num_bc_patches = 0
         bc_io = .false.
