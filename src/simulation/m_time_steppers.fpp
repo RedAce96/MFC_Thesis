@@ -586,7 +586,6 @@ contains
             wall_time_avg = 0._wp
         end if
 
-
     end subroutine s_tvd_rk
 
     !> Bubble source part in Strang operator splitting scheme

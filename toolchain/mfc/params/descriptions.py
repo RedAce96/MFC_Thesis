@@ -353,6 +353,8 @@ PATTERNS = [
     (r"patch_ib\((\d+)\)%angular_vel\((\d+)\)", "Angular velocity component {1} for IB patch {0}"),
     (r"patch_ib\((\d+)\)%angles\((\d+)\)", "Orientation angle {1} for IB patch {0}"),
     (r"patch_ib\((\d+)\)%slip", "Enable slip condition for IB patch {0}"),
+    (r"patch_ib\((\d+)\)%isothermal", "Enable isothermal wall condition for IB patch {0}"),
+    (r"patch_ib\((\d+)\)%Twall", "Wall temperature for IB patch {0}"),
     (r"patch_ib\((\d+)\)%moving_ibm", "Enable moving boundary for IB patch {0}"),
     (r"patch_ib\((\d+)\)%model_filepath", "STL model file path for IB patch {0}"),
     (r"patch_ib\((\d+)\)%model_spc", "Model spacing for IB patch {0}"),
