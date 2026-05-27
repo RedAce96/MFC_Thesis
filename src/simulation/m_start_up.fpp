@@ -772,6 +772,11 @@ contains
 
         call cpu_time(start)
         call nvtxStartRange("SAVE-DATA")
+#ifndef FRONTIER_UNIFIED
+        if (ib) then
+            $:GPU_UPDATE(host='[ib_markers%sf]')
+        end if
+#endif
         do i = 1, sys_size
 #ifndef FRONTIER_UNIFIED
             $:GPU_UPDATE(host='[q_cons_ts(stor)%vf(i)%sf]')
@@ -780,6 +785,8 @@ contains
                 do k = 0, n
                     do j = 0, m
                         if (ieee_is_nan(real(q_cons_ts(stor)%vf(i)%sf(j, k, l), kind=wp))) then
+                            ! Skip cells inside IB bodies (they may have stale/NaN values)
+                            if (ib .and. ib_markers%sf(j, k, l) /= 0) cycle
                             print *, "NaN(s) in timestep output.", j, k, l, i, proc_rank, t_step, m, n, p, x_cc(j), y_cc(k)
                             call s_mpi_abort("NaN(s) in timestep output.")
                         end if

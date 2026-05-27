@@ -158,6 +158,19 @@ if ! cmp "$(pwd)/toolchain/pyproject.toml" "$(pwd)/build/pyproject.toml" > /dev/
     # Run package installer and show progress
     PIP_LOG="$(pwd)/build/.pip_install.log"
 
+    # Rust-backed Python packages such as ffmt fail to link when Cargo uses
+    # the NVHPC/PrgEnv-nvidia cc wrapper on aarch64 Linux.
+    if [ -z "${CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER:-}" ] \
+        && [ "$(uname -s)" = "Linux" ] \
+        && [ "$(uname -m)" = "aarch64" ] \
+        && command -v gcc > /dev/null 2>&1; then
+        cc_version=$(cc --version 2>/dev/null | head -n 1 || true)
+        if [ "${CC:-}" = "nvc" ] || echo "$cc_version" | grep -Eiq 'nvc|nvhpc|nvidia'; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=gcc
+            log "(venv) Using$MAGENTA gcc$COLOR_RESET as Cargo's linker for Rust-backed Python packages."
+        fi
+    fi
+
     # Bootstrap uv if not available (uv is 10-100x faster than pip)
     # Installing uv itself is quick (~2-3 seconds) and pays off immediately
     if ! command -v uv > /dev/null 2>&1; then

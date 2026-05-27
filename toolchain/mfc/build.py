@@ -298,12 +298,29 @@ class MFCTarget:
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def get_slug(self, case: Case) -> str:
-        if self.isDependency:
-            return self.name
+    def _get_toolchain_slug(self) -> str:
+        toolchain_env = [
+            os.environ.get("CC", ""),
+            os.environ.get("CXX", ""),
+            os.environ.get("FC", ""),
+            os.environ.get("OMPI_CC", ""),
+            os.environ.get("OMPI_CXX", ""),
+            os.environ.get("OMPI_FC", ""),
+        ]
 
+        if not any(toolchain_env):
+            return "default-toolchain"
+
+        return "__".join(toolchain_env)
+
+    def get_slug(self, case: Case) -> str:
         m = hashlib.sha256()
         m.update(self.name.encode())
+        m.update(self._get_toolchain_slug().encode())
+
+        if self.isDependency:
+            return f"{self.name}-{m.hexdigest()[:10]}"
+
         m.update(CFG().make_slug().encode())
         m.update(case.get_fpp(self, False).encode())
 

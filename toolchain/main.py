@@ -4,11 +4,11 @@ import getpass
 import itertools
 import os
 import platform
-import signal
+import sys
 
 # Only import what's needed for startup - other modules are loaded lazily
 from mfc import args, lock, state
-from mfc.common import MFC_LOGO, MFC_ROOT_DIR, MFCException, does_command_exist, format_list_to_string, quit, setup_debug_logging
+from mfc.common import MFC_LOGO, MFC_ROOT_DIR, MFCException, does_command_exist, format_list_to_string, setup_debug_logging
 from mfc.printer import cons
 from mfc.state import ARG
 
@@ -237,21 +237,14 @@ if __name__ == "__main__":
 
     except MFCException as exc:
         cons.reset()
-        cons.print(f"""\
-
-
-[bold red]Error[/bold red]: {str(exc)}
-""")
-        quit(signal.SIGTERM)
+        cons.print()
+        cons.print(f"[bold red]Error[/bold red]: {str(exc)}")
+        sys.exit(1)
     except KeyboardInterrupt:
-        quit(signal.SIGTERM)
+        sys.exit(130)
     except Exception as exc:
         cons.reset()
         cons.print_exception()
-        cons.print(f"""\
-
-
-[bold red]ERROR[/bold red]: An unexpected exception occurred: {str(exc)}
-""")
-
-        quit(signal.SIGTERM)
+        cons.print()
+        cons.print(f"[bold red]ERROR[/bold red]: An unexpected exception occurred: {str(exc)}")
+        sys.exit(1)

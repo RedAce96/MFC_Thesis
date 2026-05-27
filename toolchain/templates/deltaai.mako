@@ -36,6 +36,10 @@ cd "${MFC_ROOT_DIR}"
 cd - > /dev/null
 echo
 
+% if gpu_enabled:
+export NVCOMPILER_ACC_CUDA_HEAPSIZE=8G
+% endif
+
 
 % for target in targets:
     ${helpers.run_prologue(target)}
@@ -44,8 +48,8 @@ echo
         (set -x; ${profiler} "${target.get_install_binpath(case)}")
     % else:
         (set -x; ${profiler}                                   \
-            mpirun -np ${nodes*tasks_per_node}                 \
-                   "${target.get_install_binpath(case)}")
+            srun --ntasks ${nodes*tasks_per_node}              \
+                 "${target.get_install_binpath(case)}")
     % endif
 
     ${helpers.run_epilogue(target)}
