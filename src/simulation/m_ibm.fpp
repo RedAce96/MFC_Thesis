@@ -309,7 +309,7 @@ contains
                 else
                     if (patch_ib(patch_id)%moving_ibm == 0) then
                         ! we know the object is not moving if moving_ibm is 0 (false)
-                        vel_g = 0._wp
+                        vel_g = -vel_IP
                     else
                         ! get the vector that points from the centroid to the ghost
                         radial_vector = physical_loc - [patch_ib(patch_id)%x_centroid, patch_ib(patch_id)%y_centroid, &
