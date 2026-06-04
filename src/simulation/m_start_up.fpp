@@ -789,13 +789,8 @@ contains
                             ib_marker = 0
                             if (ib) ib_marker = ib_markers%sf(j, k, l)
 
-                            print *, "NaN(s) in timestep output.", &
-                                & "cell=", j, k, l, &
-                                & "var=", i, &
-                                & "rank=", proc_rank, &
-                                & "step=", t_step, &
-                                & "ib=", ib_marker, &
-                                & "x/y=", x_cc(j), y_cc(k)
+                            print *, "NaN(s) in timestep output.", "cell=", j, k, l, "var=", i, "rank=", proc_rank, "step=", &
+                                & t_step, "ib=", ib_marker, "x/y=", x_cc(j), y_cc(k)
 
                             if (ib_marker /= 0) cycle
                             call s_mpi_abort("NaN(s) in timestep output.")
