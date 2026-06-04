@@ -429,12 +429,33 @@ contains
         integer                                              :: patch_id    !< IB Patch ID
         integer                                              :: dir
         integer                                              :: index
+        integer                                              :: bounds_error_capture_count
+        integer                                              :: bounds_error_patch_id
+        integer                                              :: bounds_error_dim
+        integer, dimension(3)                                :: bounds_error_loc
+        integer, dimension(3)                                :: bounds_error_db
+        integer                                              :: local_capture
         logical                                              :: bounds_error
+        real(wp)                                             :: bounds_error_levelset
+        real(wp), dimension(3)                               :: bounds_error_norm
+        real(wp), dimension(3)                               :: bounds_error_ip_loc
+        real(wp), dimension(3)                               :: bounds_error_physical_loc
 
         bounds_error = .false.
+        bounds_error_capture_count = 0
+        bounds_error_patch_id = 0
+        bounds_error_dim = 0
+        bounds_error_loc = 0
+        bounds_error_db = 0
+        bounds_error_levelset = 0._wp
+        bounds_error_norm = 0._wp
+        bounds_error_ip_loc = 0._wp
+        bounds_error_physical_loc = 0._wp
 
         $:GPU_PARALLEL_LOOP(private='[q, gp, i, j, k, physical_loc, patch_id, dist, norm, dim, bound, dir, index, temp_loc, &
-                            & s_cc]', copy='[bounds_error]')
+                            & s_cc, local_capture]', copy='[bounds_error, bounds_error_capture_count, bounds_error_patch_id, &
+                            & bounds_error_dim, bounds_error_loc, bounds_error_db, bounds_error_levelset, bounds_error_norm, &
+                            & bounds_error_ip_loc, bounds_error_physical_loc]')
         do q = 1, num_gps
             gp = ghost_points_in(q)
             i = gp%loc(1)
@@ -483,26 +504,22 @@ contains
                     do while ((temp_loc < s_cc(index) .or. temp_loc > s_cc(index + 1)) .and. (.not. bounds_error))
                         index = index + dir
                         if (index < -buff_size .or. index > bound) then
-#if !defined(MFC_OpenACC) && !defined(MFC_OpenMP)
-                            print *, "A required image point is not located in this computational domain."
-                            print *, "Ghost Point is located at :"
-                            if (p == 0) then
-                                print *, [x_cc(i), y_cc(j)]
-                            else
-                                print *, [x_cc(i), y_cc(j), z_cc(k)]
+                            local_capture = 0
+                            $:GPU_ATOMIC(atomic='capture')
+                            bounds_error_capture_count = bounds_error_capture_count + 1
+                            local_capture = bounds_error_capture_count
+                            $:END_GPU_ATOMIC_CAPTURE()
+
+                            if (local_capture == 1) then
+                                bounds_error_patch_id = patch_id
+                                bounds_error_dim = dim
+                                bounds_error_loc = gp%loc
+                                bounds_error_db = gp%DB
+                                bounds_error_levelset = gp%levelset
+                                bounds_error_norm = gp%levelset_norm
+                                bounds_error_ip_loc = ghost_points_in(q)%ip_loc
+                                bounds_error_physical_loc = physical_loc
                             end if
-                            print *, "We are searching in dimension ", dim, " for image point at ", ghost_points_in(q)%ip_loc(:)
-                            print *, "Domain size: ", [x_cc(-buff_size), y_cc(-buff_size), z_cc(-buff_size)]
-                            print *, "x: ", x_cc(-buff_size), " to: ", x_cc(m + buff_size - 1)
-                            print *, "y: ", y_cc(-buff_size), " to: ", y_cc(n + buff_size - 1)
-                            if (p /= 0) print *, "z: ", z_cc(-buff_size), " to: ", z_cc(p + buff_size - 1)
-                            print *, "Image point is located approximately ", &
-                                & (ghost_points_in(q)%loc(dim) - ghost_points_in(q) %ip_loc(dim))/(s_cc(1) - s_cc(0)), &
-                                & " grid cells away"
-                            print *, "Levelset ", dist, " and Norm: ", norm(:)
-                            print *, &
-                                & "A short term fix may include increasing buff_size further in m_helper_basic (currently set to a minimum of 10)"
-#endif
                             bounds_error = .true.
                         end if
                     end do
@@ -518,7 +535,51 @@ contains
         end do
         $:END_GPU_PARALLEL_LOOP()
 
-        if (bounds_error) error stop "Ghost Point and Image Point on Different Processors. Exiting"
+        if (bounds_error) then
+            if (bounds_error_capture_count >= 1 .and. bounds_error_dim >= 1 .and. bounds_error_dim <= num_dims) then
+                i = bounds_error_loc(1)
+                j = bounds_error_loc(2)
+                k = bounds_error_loc(3)
+                dist = abs(real(bounds_error_levelset, kind=wp))
+                norm(:) = bounds_error_norm
+                dim = bounds_error_dim
+                if (dim == 1) then
+                    s_cc => x_cc
+                else if (dim == 2) then
+                    s_cc => y_cc
+                else
+                    s_cc => z_cc
+                end if
+
+                print *, "A required image point is not located in this computational domain."
+                print *, "Ghost Point is located at :"
+                if (p == 0) then
+                    print *, [x_cc(i), y_cc(j)]
+                else
+                    print *, [x_cc(i), y_cc(j), z_cc(k)]
+                end if
+                print *, "IB patch id: ", bounds_error_patch_id
+                print *, "DB flags: ", bounds_error_db
+                print *, "Physical ghost-point location: ", bounds_error_physical_loc
+                print *, "We are searching in dimension ", dim, " for image point at ", bounds_error_ip_loc
+                print *, "x: ", x_cc(-buff_size), " to: ", x_cc(m + buff_size - 1)
+                print *, "y: ", y_cc(-buff_size), " to: ", y_cc(n + buff_size - 1)
+                if (p /= 0) then
+                    print *, "z: ", z_cc(-buff_size), " to: ", z_cc(p + buff_size - 1)
+                end if
+                print *, "Image point is located approximately ", &
+                    & (real(bounds_error_loc(dim), wp) - bounds_error_ip_loc(dim))/(s_cc(1) - s_cc(0)), &
+                    & " grid cells away"
+                print *, "Levelset ", dist, " and Norm: ", norm(:)
+                print *, &
+                    & "A short term fix may include increasing buff_size further in m_helper_basic (currently set to a minimum of 10)"
+            else
+                print *, "A required image point is not located in this computational domain."
+                print *, "Failed to capture a stable ghost-point index in the GPU diagnostic path."
+            end if
+
+            error stop "Ghost Point and Image Point on Different Processors. Exiting"
+        end if
 
     end subroutine s_compute_image_points
 

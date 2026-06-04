@@ -748,6 +748,7 @@ contains
         integer(kind=8)         :: i, j, k, l
         integer                 :: stor
         integer                 :: save_count
+        integer                 :: ib_marker
 
         if (down_sample) then
             call s_populate_variables_buffers(bc_type, q_cons_ts(1)%vf)
@@ -785,9 +786,18 @@ contains
                 do k = 0, n
                     do j = 0, m
                         if (ieee_is_nan(real(q_cons_ts(stor)%vf(i)%sf(j, k, l), kind=wp))) then
-                            ! Skip cells inside IB bodies (they may have stale/NaN values)
-                            if (ib .and. ib_markers%sf(j, k, l) /= 0) cycle
-                            print *, "NaN(s) in timestep output.", j, k, l, i, proc_rank, t_step, m, n, p, x_cc(j), y_cc(k)
+                            ib_marker = 0
+                            if (ib) ib_marker = ib_markers%sf(j, k, l)
+
+                            print *, "NaN(s) in timestep output.", &
+                                & "cell=", j, k, l, &
+                                & "var=", i, &
+                                & "rank=", proc_rank, &
+                                & "step=", t_step, &
+                                & "ib=", ib_marker, &
+                                & "x/y=", x_cc(j), y_cc(k)
+
+                            if (ib_marker /= 0) cycle
                             call s_mpi_abort("NaN(s) in timestep output.")
                         end if
                     end do

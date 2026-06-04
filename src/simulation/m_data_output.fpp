@@ -254,6 +254,7 @@ contains
             write (3, *)  ! new line
 
             if (.not. f_approx_equal(icfl_max_glb, icfl_max_glb)) then
+                write (3, '(A,1X,I9,1X,ES16.6,1X,ES16.6,1X,ES16.6)') 'NaN ICFL at step', t_step, dt, mytime, icfl_max_glb
                 call s_mpi_abort('ICFL is NaN. Exiting.')
             else if (icfl_max_glb > 1._wp) then
                 print *, 'icfl', icfl_max_glb
@@ -262,6 +263,7 @@ contains
 
             if (viscous) then
                 if (.not. f_approx_equal(vcfl_max_glb, vcfl_max_glb)) then
+                    write (3, '(A,1X,I9,1X,ES16.6,1X,ES16.6,1X,ES16.6)') 'NaN VCFL at step', t_step, dt, mytime, vcfl_max_glb
                     call s_mpi_abort('VCFL is NaN. Exiting.')
                 else if (vcfl_max_glb > 1._wp) then
                     print *, 'vcfl', vcfl_max_glb
